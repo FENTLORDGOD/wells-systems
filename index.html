@@ -532,7 +532,7 @@
         <div>
           <h3 class="font-semibold" style="font-size: var(--step-2)">Tell us about your project</h3>
           <p class="text-muted mt-2">We’ll reply within one business day.</p>
-          <form class="mt-6 grid gap-4" action="https://formspree.io/f/your-id" method="POST">
+          <form class="mt-6 grid gap-4" onsubmit="submitContact(event)">
             <input name="name" required placeholder="Your name" class="w-full rounded-xl border border-[var(--border)] bg-transparent px-4 py-3">
             <input name="email" required type="email" placeholder="Email" class="w-full rounded-xl border border-[var(--border)] bg-transparent px-4 py-3">
             <textarea name="message" required placeholder="What are you building?" rows="5" class="w-full rounded-xl border border-[var(--border)] bg-transparent px-4 py-3"></textarea>
@@ -569,6 +569,32 @@
   <script>
     document.getElementById('year').textContent = new Date().getFullYear();
   </script>
+
+<script>
+async function submitContact(e){
+  e.preventDefault();
+  const f = e.target;
+  const payload = {
+    name: f.name.value,
+    email: f.email.value,
+    message: f.message.value
+  };
+  try {
+    const r = await fetch('/.netlify/functions/contact', {
+      method: 'POST',
+      headers: {'content-type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (!r.ok) throw new Error(await r.text());
+    alert('Thanks! We’ll be in touch.');
+    f.reset();
+  } catch (err) {
+    alert('Sorry, something went wrong.');
+    console.error(err);
+  }
+}
+</script>
+
 
   <!-- Floating CTA -->
   <a href="#contact" class="fixed bottom-6 right-6 rounded-full bg-[var(--brand-500)] text-black font-semibold px-5 py-3 shadow-lg">
