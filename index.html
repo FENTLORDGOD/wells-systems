@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en" x-data
+      x-bind:class="{'dark': JSON.parse(localStorage.getItem('ws-dark')||'false')}"
+      class="scroll-smooth antialiased">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wells Systems — Modern Websites & AI</title>
+  <meta name="description" content="Wells Systems builds high-conversion, modern websites with Apple/Stripe-level polish and integrated AI." />
+
+  <!-- Tailwind CDN (JIT with arbitrary values) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'Apple Color Emoji','Segoe UI Emoji']
+          },
+          boxShadow: {
+            glass: '0 1px 2px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.08)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+  <!-- Google Font (optional) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+
+  <!-- Theme Tokens & Utilities -->
+  <style>
+    :root {
+      /* Brand system (edit these to rebrand) */
+      --brand-50:#eefaff;
+      --brand-100:#d6f3ff;
+      --brand-200:#b6e8ff;
+      --brand-300:#88d9ff;
+      --brand-400:#54c4ff;
+      --brand-500:#1eaafc; /* Primary */
+      --brand-600:#138ce0;
+      --brand-700:#0f6fba;
+      --brand-800:#0c5892;
+      --brand-900:#0b4877;
+
+      /* Neutrals */
+      --bg: #0b0d11;
+      --bg-elev: #10131a;
+      --card: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.08);
+      --text: #e6eaf2;
+      --muted: #9aa3b2;
+
+      /* Light mode overrides will sit in .light-scheme below */
+      --radius: 18px;
+
+      /* Fluid type scale */
+      --step--1: clamp(0.83rem, 0.80rem + 0.15vw, 0.93rem);
+      --step-0: clamp(1.00rem, 0.97rem + 0.25vw, 1.125rem);
+      --step-1: clamp(1.20rem, 1.12rem + 0.55vw, 1.50rem);
+      --step-2: clamp(1.44rem, 1.30rem + 0.90vw, 2.00rem);
+      --step-3: clamp(1.73rem, 1.52rem + 1.40vw, 2.66rem);
+      --step-4: clamp(2.07rem, 1.77rem + 2.10vw, 3.55rem);
+      --step-5: clamp(2.49rem, 2.05rem + 3.10vw, 4.74rem);
+
+      /* Section rhythm */
+      --section-pad: clamp(3rem, 6vw, 6rem);
+      --container: 1200px;
+    }
+    .light-scheme {
+      --bg: #ffffff;
+      --bg-elev: #f7f9fb;
+      --card: rgba(0,0,0,0.04);
+      --border: rgba(0,0,0,0.08);
+      --text: #0b0d11;
+      --muted: #4c5566;
+    }
+
+    html { background: var(--bg); color: var(--text); }
+    .ws-container { width: min(100%, var(--container)); margin-inline: auto; padding-inline: 1rem; }
+    .ws-section { padding-block: var(--section-pad); }
+    .text-muted { color: var(--muted); }
+
+    /* Glassmorphism card */
+    .glass {
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-glass, 0 10px 30px rgba(0,0,0,.20));
+    }
+
+    /* Magnetic CTA */
+    .magnet { transition: transform .15s cubic-bezier(.2,.8,.2,1); will-change: transform; }
+    .magnet-wrap { perspective: 600px; }
+
+    /* Smooth theme transitions */
+    .theme-anim, .theme-anim * { transition: background-color .4s ease, color .4s ease, border-color .4s ease; }
+
+    /* Parallax layers */
+    .p-layer { will-change: transform; transform: translateZ(0); }
+  </style>
+
+  <script>
+    // Theme control + parallax + navbar scroll state + accordion helpers
+    document.addEventListener('alpine:init', () => {
+      Alpine.store('theme', {
+        get isDark() { return JSON.parse(localStorage.getItem('ws-dark') || 'false'); },
+        toggle() {
+          const next = !this.isDark;
+          localStorage.setItem('ws-dark', JSON.stringify(next));
+          document.documentElement.classList.toggle('dark', next);
+          document.documentElement.classList.toggle('light-scheme', !next);
+        }
+      });
+
+      Alpine.data('navbar', () => ({
+        scrolled: false,
+        init() {
+          const onScroll = () => {
+            this.scrolled = window.scrollY > 10;
+          };
+          onScroll();
+          window.addEventListener('scroll', onScroll, { passive: true });
+        }
+      }));
+
+      Alpine.data('parallax', () => ({
+        y: 0,
+        init() {
+          let raf = null;
+          const onScroll = () => {
+            if (raf) return;
+            raf = requestAnimationFrame(() => {
+              this.y = window.scrollY;
+              raf = null;
+            });
+          };
+          onScroll();
+          window.addEventListener('scroll', onScroll, { passive: true });
+        }
+      }));
+
+      Alpine.data('magnet', () => ({
+        rx: 0, ry: 0,
+        enter(e){ this.move(e); },
+        move(e){
+          const b = e.currentTarget.getBoundingClientRect();
+          const x = (e.clientX - b.left) / b.width;
+          const y = (e.clientY - b.top) / b.height;
+          const tx = (x - 0.5) * 16; // max 16px
+          const ty = (y - 0.5) * 16;
+          this.rx = tx; this.ry = ty;
+          e.currentTarget.querySelector('.magnet').style.transform = `translate(${tx}px, ${ty}px)`;
+        },
+        leave(e){
+          this.rx = this.ry = 0;
+          e.currentTarget.querySelector('.magnet').style.transform = 'translate(0,0)';
+        }
+      }));
+
+      Alpine.data('carousel', () => ({
+        i: 0,
+        items: [0,1,2],
+        next(){ this.i = (this.i + 1) % this.items.length; },
+        prev(){ this.i = (this.i - 1 + this.items.length) % this.items.length; },
+        auto: null,
+        init(){
+          this.auto = setInterval(() => this.next(), 4200);
+          this.$root.addEventListener('mouseenter', ()=>clearInterval(this.auto));
+          this.$root.addEventListener('mouseleave', ()=> this.auto = setInterval(() => this.next(), 4200));
+        }
+      }));
+
+      Alpine.data('faq', () => ({
+        open: null,
+        toggle(k){ this.open = this.open === k ? null : k; }
+      }));
+    });
+
+    // Initialize light/dark root class on first paint
+    (function(){
+      const isDark = JSON.parse(localStorage.getItem('ws-dark') || 'true');
+      document.documentElement.classList.toggle('dark', isDark);
+      document.documentElement.classList.toggle('light-scheme', !isDark);
+    })();
+  </script>
+</head>
+<body class="theme-anim selection:bg-[var(--brand-300)] selection:text-black">
+  <!-- =========================================================
+       Sticky Navbar (animated) 
+       ========================================================= -->
+  <header x-data="navbar" x-init="init" :class="scrolled ? 'backdrop-blur bg-[color:rgba(16,19,26,0.35)] dark:bg-[color:rgba(16,19,26,0.35)]' : ''"
+          class="fixed inset-x-0 top-0 z-50 border-b border-transparent transition-all duration-300">
+    <nav class="ws-container flex items-center justify-between py-3">
+      <a href="#top" class="flex items-center gap-2">
+        <img src="assets/logo-wells.svg" alt="Wells Systems" class="h-8 w-8" />
+        <span class="text-[var(--text)] font-semibold tracking-tight">Wells Systems</span>
+      </a>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#features" class="text-muted hover:text-[var(--text)]">Features</a>
+        <a href="#cases" class="text-muted hover:text-[var(--text)]">Case Studies</a>
+        <a href="#pricing" class="text-muted hover:text-[var(--text)]">Pricing</a>
+        <a href="#faq" class="text-muted hover:text-[var(--text)]">FAQ</a>
+        <a href="#contact" class="text-muted hover:text-[var(--text)]">Contact</a>
+        <button @click="$store.theme.toggle()"
+                class="rounded-full border px-3 py-1 text-sm border-[var(--border)] hover:bg-[var(--card)]">
+          Toggle <span class="hidden sm:inline">Theme</span>
+        </button>
+        <a href="#demo" class="inline-flex items-center rounded-full bg-[var(--brand-500)] px-4 py-2 font-semibold text-black hover:brightness-110">
+          Book a Demo
+        </a>
+      </div>
+      <!-- Mobile -->
+      <div class="md:hidden flex items-center gap-3">
+        <button @click="$store.theme.toggle()" class="rounded-full border px-3 py-1 text-sm border-[var(--border)] hover:bg-[var(--card)]">☾</button>
+        <details class="relative">
+          <summary class="list-none cursor-pointer rounded-lg border border-[var(--border)] px-3 py-2">Menu</summary>
+          <div class="absolute right-0 mt-2 w-56 glass p-2">
+            <a href="#features" class="block px-3 py-2 rounded hover:bg-white/5">Features</a>
+            <a href="#cases" class="block px-3 py-2 rounded hover:bg-white/5">Case Studies</a>
+            <a href="#pricing" class="block px-3 py-2 rounded hover:bg-white/5">Pricing</a>
+            <a href="#faq" class="block px-3 py-2 rounded hover:bg-white/5">FAQ</a>
+            <a href="#contact" class="block px-3 py-2 rounded hover:bg-white/5">Contact</a>
+            <a href="#demo" class="block px-3 py-2 rounded bg-[var(--brand-500)] text-black font-semibold mt-2">Book a Demo</a>
+          </div>
+        </details>
+      </div>
+    </nav>
+  </header>
+
+  <main id="top" class="pt-20">
+
+    <!-- =========================================================
+         HERO (Parallax + Gradient Headline + Magnetic CTAs)
+         ========================================================= -->
+    <section class="relative ws-section overflow-hidden" x-data="parallax" x-init="init">
+      <!-- Parallax layers -->
+      <div class="absolute inset-0 -z-10">
+        <div class="p-layer absolute -inset-10 bg-[radial-gradient(60%_40%_at_50%_20%,rgba(30,170,252,.35),transparent_60%)]"
+             :style="`transform: translateY(${y * 0.04}px)`"></div>
+        <div class="p-layer absolute -inset-10 bg-[conic-gradient(from_180deg_at_50%_20%,rgba(255,255,255,.06),transparent_30%,rgba(255,255,255,.04))]"
+             :style="`transform: translateY(${y * -0.02}px)`"></div>
+        <div class="p-layer absolute -inset-10 opacity-25 mix-blend-overlay"
+             style="background-image:url('assets/placeholder-16x9.svg'); background-size:cover;"
+             :style="`transform: translateY(${y * 0.08}px)`"></div>
+      </div>
+
+      <div class="ws-container grid lg:grid-cols-12 gap-10 items-center">
+        <div class="lg:col-span-7">
+          <h1 class="font-extrabold leading-tight"
+              style="font-size: var(--step-5);">
+            <span class="bg-clip-text text-transparent bg-[linear-gradient(92deg,var(--brand-300),var(--brand-600))]">
+              Custom Websites with <span class="whitespace-nowrap">Apple-level polish</span>
+            </span>
+          </h1>
+          <p class="mt-5 text-muted" style="font-size: var(--step-1);">
+            We design, build and ship high-conversion websites and product pages — fast.
+            Zero templates. 100% bespoke. AI-powered forms & flows included.
+          </p>
+
+          <div class="mt-8 flex flex-wrap gap-4">
+            <!-- Magnetic CTA -->
+            <div class="magnet-wrap" x-data="magnet" @pointermove="move" @pointerenter="enter" @pointerleave="leave">
+              <a href="#demo" class="magnet inline-flex items-center rounded-2xl px-6 py-3 font-semibold text-black bg-[var(--brand-500)] shadow-lg">
+                Start Your Project
+              </a>
+            </div>
+            <a href="#features" class="inline-flex items-center rounded-2xl px-6 py-3 font-semibold border border-[var(--border)] hover:bg-[var(--card)]">
+              See Features
+            </a>
+          </div>
+
+          <!-- Social Proof -->
+          <div class="mt-10">
+            <p class="text-sm text-muted mb-3">Trusted by founders & teams from</p>
+            <div class="flex flex-wrap items-center gap-6 opacity-80">
+              <img src="assets/icon-bolt.svg" class="h-6" alt="Bolt" />
+              <img src="assets/icon-shield.svg" class="h-6" alt="Shield" />
+              <img src="assets/icon-spark.svg" class="h-6" alt="Spark" />
+              <img src="assets/icon-quote.svg" class="h-6" alt="Quote" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Demo card -->
+        <div class="lg:col-span-5">
+          <div class="glass p-4 md:p-6">
+            <div class="aspect-[16/10] rounded-[calc(var(--radius)-6px)] bg-[linear-gradient(160deg,rgba(30,170,252,.15),transparent)] border border-[var(--border)] overflow-hidden">
+              <img src="assets/placeholder-16x9.svg" class="w-full h-full object-cover opacity-90" alt="Demo preview">
+            </div>
+            <div class="flex justify-between items-center mt-3">
+              <span class="text-muted text-sm">Preview: Landing layout</span>
+              <a href="#demo" class="text-sm font-semibold underline decoration-[var(--brand-500)] underline-offset-4">Open Live Demo</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         VALUE PROPS / FEATURES (Glass Cards)
+         ========================================================= -->
+    <section id="features" class="ws-section">
+      <div class="ws-container">
+        <div class="max-w-2xl">
+          <h2 class="font-bold" style="font-size: var(--step-3);">Everything you need to launch & convert</h2>
+          <p class="text-muted mt-2" style="font-size: var(--step-0);">Modern stack, stunning visuals, sales-first structure.</p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 mt-10">
+          <!-- Card -->
+          <article class="glass p-6">
+            <img src="assets/icon-spark.svg" class="h-8 w-8 mb-4" alt="">
+            <h3 class="font-semibold mb-2" style="font-size: var(--step-1)">Design that sells</h3>
+            <p class="text-muted">Apple/Stripe-inspired layouts, fluid type, generous spacing, refined motion.</p>
+          </article>
+          <article class="glass p-6">
+            <img src="assets/icon-bolt.svg" class="h-8 w-8 mb-4" alt="">
+            <h3 class="font-semibold mb-2" style="font-size: var(--step-1)">No template lock-in</h3>
+            <p class="text-muted">100% custom HTML + Tailwind CDN + Alpine.js. No build step required.</p>
+          </article>
+          <article class="glass p-6">
+            <img src="assets/icon-shield.svg" class="h-8 w-8 mb-4" alt="">
+            <h3 class="font-semibold mb-2" style="font-size: var(--step-1)">Fast & accessible</h3>
+            <p class="text-muted">GPU-friendly effects, semantic HTML, keyboard nav, high contrast.</p>
+          </article>
+        </div>
+
+        <!-- Steps Timeline -->
+        <div class="mt-16 grid lg:grid-cols-2 gap-10 items-start">
+          <div>
+            <h3 class="font-semibold mb-3" style="font-size: var(--step-2)">Our process</h3>
+            <ol class="space-y-6">
+              <li class="flex gap-4">
+                <div class="h-8 w-8 rounded-full bg-[var(--brand-500)] text-black grid place-items-center font-bold">1</div>
+                <div>
+                  <div class="font-semibold">Discovery</div>
+                  <p class="text-muted">Brand, goals, ideal customers, success metrics.</p>
+                </div>
+              </li>
+              <li class="flex gap-4">
+                <div class="h-8 w-8 rounded-full bg-[var(--brand-500)] text-black grid place-items-center font-bold">2</div>
+                <div>
+                  <div class="font-semibold">Design</div>
+                  <p class="text-muted">Wireframes → polished UI with motion & parallax.</p>
+                </div>
+              </li>
+              <li class="flex gap-4">
+                <div class="h-8 w-8 rounded-full bg-[var(--brand-500)] text-black grid place-items-center font-bold">3</div>
+                <div>
+                  <div class="font-semibold">Build</div>
+                  <p class="text-muted">Clean HTML, Tailwind, Alpine; forms & AI chatbot.</p>
+                </div>
+              </li>
+              <li class="flex gap-4">
+                <div class="h-8 w-8 rounded-full bg-[var(--brand-500)] text-black grid place-items-center font-bold">4</div>
+                <div>
+                  <div class="font-semibold">Launch & iterate</div>
+                  <p class="text-muted">Ship fast, test CTA conversion, iterate weekly.</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <!-- Testimonials Carousel -->
+          <div x-data="carousel" x-init="init" class="glass p-6">
+            <div class="relative overflow-hidden">
+              <template x-for="(n, idx) in items" :key="idx">
+                <figure x-show="i===idx" x-transition.opacity.duration.400ms class="grid gap-3">
+                  <img src="assets/icon-quote.svg" class="h-6 w-6 opacity-70" alt="">
+                  <blockquote class="text-lg">“Wells Systems took us from ‘okay’ to ‘whoa.’ Our demo-to-deal rate jumped 38% in 30 days.”</blockquote>
+                  <figcaption class="text-sm text-muted">— A happy founder</figcaption>
+                </figure>
+              </template>
+            </div>
+            <div class="flex justify-between mt-4">
+              <button @click="prev" class="rounded border border-[var(--border)] px-3 py-1 hover:bg-[var(--card)]">Prev</button>
+              <button @click="next" class="rounded border border-[var(--border)] px-3 py-1 hover:bg-[var(--card)]">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         LIVE DEMO CTA
+         ========================================================= -->
+    <section id="demo" class="ws-section">
+      <div class="ws-container glass p-6 md:p-10">
+        <div class="grid md:grid-cols-2 gap-8 items-center">
+          <div>
+            <h3 class="font-semibold" style="font-size: var(--step-2)">See it in action</h3>
+            <p class="text-muted mt-2">Walk through a live prototype and pricing in under 5 minutes.</p>
+            <div class="mt-6 flex gap-3">
+              <a href="#contact" class="rounded-xl bg-[var(--brand-500)] text-black font-semibold px-5 py-3">Schedule a walkthrough</a>
+              <a href="#pricing" class="rounded-xl border border-[var(--border)] px-5 py-3 hover:bg-[var(--card)]">View pricing</a>
+            </div>
+          </div>
+          <div class="aspect-video rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--bg-elev)] grid place-items-center">
+            <span class="text-muted">Embed demo/video here</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         FEATURES GRID (deeper)
+         ========================================================= -->
+    <section class="ws-section">
+      <div class="ws-container grid md:grid-cols-3 gap-6">
+        <div class="glass p-6">
+          <h4 class="font-semibold mb-2">AI Forms & Quiz</h4>
+          <p class="text-muted">Lead capture with “Build Your Website” quiz + GPT handoff.</p>
+        </div>
+        <div class="glass p-6">
+          <h4 class="font-semibold mb-2">Security</h4>
+          <p class="text-muted">Headers, CSP suggestions, spam-proof forms, bot honeypots.</p>
+        </div>
+        <div class="glass p-6">
+          <h4 class="font-semibold mb-2">Performance</h4>
+          <p class="text-muted">Lazy media, GPU transforms, minimal JS, accessible motion.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         CASE STUDIES
+         ========================================================= -->
+    <section id="cases" class="ws-section">
+      <div class="ws-container">
+        <h3 class="font-semibold mb-6" style="font-size: var(--step-2)">Case studies</h3>
+        <div class="grid md:grid-cols-3 gap-6">
+          <article class="glass p-4">
+            <div class="aspect-[16/10] rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--bg-elev)]">
+              <img src="assets/placeholder-16x9.svg" class="w-full h-full object-cover" alt="">
+            </div>
+            <h4 class="mt-3 font-semibold">SaaS Landing</h4>
+            <p class="text-muted text-sm">+38% demo conversions.</p>
+          </article>
+          <article class="glass p-4">
+            <div class="aspect-[16/10] rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--bg-elev)]">
+              <img src="assets/placeholder-16x9.svg" class="w-full h-full object-cover" alt="">
+            </div>
+            <h4 class="mt-3 font-semibold">E-commerce PDP</h4>
+            <p class="text-muted text-sm">+22% add-to-carts.</p>
+          </article>
+          <article class="glass p-4">
+            <div class="aspect-[16/10] rounded-lg overflow-hidden border border-[var(--border)] bg-[var(--bg-elev)]">
+              <img src="assets/placeholder-16x9.svg" class="w-full h-full object-cover" alt="">
+            </div>
+            <h4 class="mt-3 font-semibold">Founder Portfolio</h4>
+            <p class="text-muted text-sm">Hiring pipeline unlocked.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         PRICING
+         ========================================================= -->
+    <section id="pricing" class="ws-section">
+      <div class="ws-container">
+        <h3 class="font-semibold mb-8" style="font-size: var(--step-2)">Simple pricing</h3>
+        <div class="grid md:grid-cols-3 gap-6">
+          <div class="glass p-6">
+            <h4 class="font-semibold">Starter</h4>
+            <div class="text-3xl font-extrabold my-2">£499</div>
+            <ul class="text-muted space-y-1 text-sm">
+              <li>1 page, custom design</li>
+              <li>Contact form + anti-spam</li>
+              <li>Launch in 3–5 days</li>
+            </ul>
+            <a href="#contact" class="mt-4 inline-block rounded-xl border border-[var(--border)] px-4 py-2 hover:bg-[var(--card)]">Get started</a>
+          </div>
+          <div class="glass p-6 border border-[var(--brand-500)]">
+            <h4 class="font-semibold">Growth</h4>
+            <div class="text-3xl font-extrabold my-2">£1,499</div>
+            <ul class="text-muted space-y-1 text-sm">
+              <li>Up to 4 pages</li>
+              <li>Hero parallax + sliders</li>
+              <li>“Build your website” quiz</li>
+            </ul>
+            <a href="#contact" class="mt-4 inline-block rounded-xl bg-[var(--brand-500)] text-black font-semibold px-4 py-2">Choose plan</a>
+          </div>
+          <div class="glass p-6">
+            <h4 class="font-semibold">Premium</h4>
+            <div class="text-3xl font-extrabold my-2">£2,999+</div>
+            <ul class="text-muted space-y-1 text-sm">
+              <li>Full funnel pages</li>
+              <li>AI chatbot & integrations</li>
+              <li>Ongoing CRO iterations</li>
+            </ul>
+            <a href="#contact" class="mt-4 inline-block rounded-xl border border-[var(--border)] px-4 py-2 hover:bg-[var(--card)]">Book consult</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         FAQ (Accordion)
+         ========================================================= -->
+    <section id="faq" class="ws-section">
+      <div class="ws-container" x-data="faq">
+        <h3 class="font-semibold mb-6" style="font-size: var(--step-2)">Frequently asked</h3>
+        <div class="space-y-3">
+          <article class="glass p-4">
+            <button class="w-full text-left font-semibold" @click="toggle(1)">How fast can we launch?</button>
+            <p x-show="open===1" x-transition.opacity class="mt-2 text-muted">Simple landing pages ship in 3–5 days. Larger sites 2–4 weeks.</p>
+          </article>
+          <article class="glass p-4">
+            <button class="w-full text-left font-semibold" @click="toggle(2)">Do you use templates?</button>
+            <p x-show="open===2" x-transition.opacity class="mt-2 text-muted">No. Every project is custom—design system + components tailored to your brand.</p>
+          </article>
+          <article class="glass p-4">
+            <button class="w-full text-left font-semibold" @click="toggle(3)">Can you integrate AI?</button>
+            <p x-show="open===3" x-transition.opacity class="mt-2 text-muted">Yes—chatbots, lead scoring, “build your site” quiz & scripted GPT flows.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         CONTACT
+         ========================================================= -->
+    <section id="contact" class="ws-section">
+      <div class="ws-container grid md:grid-cols-2 gap-10 items-start">
+        <div>
+          <h3 class="font-semibold" style="font-size: var(--step-2)">Tell us about your project</h3>
+          <p class="text-muted mt-2">We’ll reply within one business day.</p>
+          <form class="mt-6 grid gap-4" action="https://formspree.io/f/your-id" method="POST">
+            <input name="name" required placeholder="Your name" class="w-full rounded-xl border border-[var(--border)] bg-transparent px-4 py-3">
+            <input name="email" required type="email" placeholder="Email" class="w-full rounded-xl border border-[var(--border)] bg-transparent px-4 py-3">
+            <textarea name="message" required placeholder="What are you building?" rows="5" class="w-full rounded-xl border border-[var(--border)] bg-transparent px-4 py-3"></textarea>
+            <button type="submit" class="rounded-xl bg-[var(--brand-500)] text-black font-semibold px-5 py-3">Send message</button>
+            <input type="text" name="_honeypot" class="hidden" tabindex="-1" autocomplete="off">
+          </form>
+        </div>
+        <div class="glass p-6">
+          <h4 class="font-semibold">What you get</h4>
+          <ul class="mt-2 text-muted space-y-2">
+            <li>• Custom design & motion</li>
+            <li>• Conversion-first structure</li>
+            <li>• AI chatbot + lead quiz</li>
+            <li>• Fast hosting & SEO setup</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       FOOTER
+       ========================================================= -->
+  <footer class="ws-section pt-0">
+    <div class="ws-container border-t border-[var(--border)] pt-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-2">
+        <img src="assets/logo-wells.svg" class="h-6 w-6" alt="">
+        <span class="text-muted text-sm">© <span id="year"></span> Wells Systems</span>
+      </div>
+      <div class="text-muted text-sm">Design system by Wells Systems</div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+
+  <!-- Floating CTA -->
+  <a href="#contact" class="fixed bottom-6 right-6 rounded-full bg-[var(--brand-500)] text-black font-semibold px-5 py-3 shadow-lg">
+    Book a Demo
+  </a>
+</body>
+</html>
